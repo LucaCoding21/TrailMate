@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Switch } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,6 +15,20 @@ const ISSUE_TYPES = [
   { key: 'snow', label: 'Snow/ice', icon: 'ac-unit' },
 ];
 
+const VEHICLE_TYPES = [
+  'Car', 'SUV', 'Truck', 'Motorcycle', 'ATV/UTV', 'RV', 'Other'
+];
+
+const RECOVERY_GEAR = [
+  'Winch', 'Tow straps', 'Shovel', 'Traction boards', 'Jack', 'None'
+];
+
+
+
+const CELL_RECEPTION = [
+  'Excellent', 'Good', 'Fair', 'Poor', 'No signal'
+];
+
 export default function RescueForm() {
   const { user } = useAuth();
   const [location, setLocation] = useState(null);
@@ -24,6 +38,16 @@ export default function RescueForm() {
   const [uploading, setUploading] = useState(false);
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  
+  // Advanced info fields
+  const [showAdvancedInfo, setShowAdvancedInfo] = useState(false);
+  const [vehicleType, setVehicleType] = useState('');
+  const [recoveryGear, setRecoveryGear] = useState([]);
+  const [numPeople, setNumPeople] = useState('');
+  const [canMove, setCanMove] = useState(null);
+  const [cellReception, setCellReception] = useState('');
+  const [locationContext, setLocationContext] = useState('');
+  const [snowDepth, setSnowDepth] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -64,6 +88,14 @@ export default function RescueForm() {
     }
   };
 
+  const toggleRecoveryGear = (gear) => {
+    if (recoveryGear.includes(gear)) {
+      setRecoveryGear(recoveryGear.filter(g => g !== gear));
+    } else {
+      setRecoveryGear([...recoveryGear, gear]);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!location) {
       Alert.alert('Missing Location', 'Could not get your location.');
@@ -94,6 +126,14 @@ export default function RescueForm() {
         issueType,
         photoUrl,
         additionalDetails: details,
+        locationContext,
+        // Advanced info fields
+        vehicleType: showAdvancedInfo ? vehicleType : null,
+        recoveryGear: showAdvancedInfo ? recoveryGear : [],
+        numPeople: showAdvancedInfo ? numPeople : null,
+        canMove: showAdvancedInfo ? canMove : null,
+        cellReception: showAdvancedInfo ? cellReception : null,
+        snowDepth: issueType === 'Snow/ice' ? snowDepth : null,
         status: 'pending',
         helperId: null,
         source: 'app',
@@ -111,6 +151,7 @@ export default function RescueForm() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.header}>Request Rescue</Text>
+        
         <Text style={styles.label}>Your Location</Text>
         <TouchableOpacity style={styles.locationBox} disabled>
           {locationLoading ? (
@@ -125,6 +166,17 @@ export default function RescueForm() {
           )}
           <Text style={styles.locationHint}>Long press to edit manually</Text>
         </TouchableOpacity>
+        
+        <Text style={styles.label}>How did you get to this location?</Text>
+        <TextInput
+          style={styles.locationContextInput}
+          placeholder="e.g., Include the roads or trails you took, landmarks you passed, or anything that might help rescuers find you faster."
+          value={locationContext}
+          onChangeText={setLocationContext}
+          maxLength={200}
+          multiline
+        />
+        
         <Text style={styles.label}>What's the issue?</Text>
         <View style={styles.issuesRow}>
           {ISSUE_TYPES.map((type) => (
@@ -139,6 +191,21 @@ export default function RescueForm() {
             </TouchableOpacity>
           ))}
         </View>
+        
+        {issueType === 'Snow/ice' && (
+          <View style={styles.snowDepthContainer}>
+            <Text style={styles.label}>Snow Depth (cm)</Text>
+            <TextInput
+              style={styles.snowDepthInput}
+              placeholder="e.g., 25"
+              value={snowDepth}
+              onChangeText={setSnowDepth}
+              keyboardType="numeric"
+              maxLength={3}
+            />
+          </View>
+        )}
+        
         <Text style={styles.label}>Add Photo (Optional)</Text>
         <TouchableOpacity style={styles.photoBox} onPress={pickImage} activeOpacity={0.8}>
           {photo ? (
@@ -150,6 +217,7 @@ export default function RescueForm() {
             </View>
           )}
         </TouchableOpacity>
+        
         <Text style={styles.label}>Additional Details</Text>
         <TextInput
           style={styles.detailsInput}
@@ -160,6 +228,91 @@ export default function RescueForm() {
           multiline
         />
         <Text style={styles.charCount}>{details.length}/120 characters</Text>
+        
+        {/* Advanced Info Toggle */}
+        <View style={styles.advancedToggleContainer}>
+          <Text style={styles.label}>Advanced Info (Optional)</Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Show additional fields</Text>
+            <Switch
+              value={showAdvancedInfo}
+              onValueChange={setShowAdvancedInfo}
+              trackColor={{ false: '#e0e0e0', true: '#388e3c' }}
+              thumbColor={showAdvancedInfo ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+        </View>
+        
+        {/* Advanced Info Fields */}
+        {showAdvancedInfo && (
+          <View style={styles.advancedContainer}>
+            <Text style={styles.advancedLabel}>Vehicle Type</Text>
+            <View style={styles.optionsRow}>
+              {VEHICLE_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.optionBtn, vehicleType === type && styles.optionBtnActive]}
+                  onPress={() => setVehicleType(type)}
+                >
+                  <Text style={[styles.optionText, vehicleType === type && styles.optionTextActive]}>{type}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <Text style={styles.advancedLabel}>Recovery Gear On Hand</Text>
+            <View style={styles.optionsRow}>
+              {RECOVERY_GEAR.map((gear) => (
+                <TouchableOpacity
+                  key={gear}
+                  style={[styles.optionBtn, recoveryGear.includes(gear) && styles.optionBtnActive]}
+                  onPress={() => toggleRecoveryGear(gear)}
+                >
+                  <Text style={[styles.optionText, recoveryGear.includes(gear) && styles.optionTextActive]}>{gear}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <Text style={styles.advancedLabel}>Number of People</Text>
+            <TextInput
+              style={styles.numberInput}
+              placeholder="e.g., 2"
+              value={numPeople}
+              onChangeText={setNumPeople}
+              keyboardType="numeric"
+              maxLength={2}
+            />
+            
+            <Text style={styles.advancedLabel}>Can the vehicle still move?</Text>
+            <View style={styles.yesNoContainer}>
+              <TouchableOpacity
+                style={[styles.yesNoBtn, canMove === true && styles.yesNoBtnActive]}
+                onPress={() => setCanMove(true)}
+              >
+                <Text style={[styles.yesNoText, canMove === true && styles.yesNoTextActive]}>Yes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.yesNoBtn, canMove === false && styles.yesNoBtnActive]}
+                onPress={() => setCanMove(false)}
+              >
+                <Text style={[styles.yesNoText, canMove === false && styles.yesNoTextActive]}>No</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.advancedLabel}>Cell Reception</Text>
+            <View style={styles.optionsRow}>
+              {CELL_RECEPTION.map((reception) => (
+                <TouchableOpacity
+                  key={reception}
+                  style={[styles.optionBtn, cellReception === reception && styles.optionBtnActive]}
+                  onPress={() => setCellReception(reception)}
+                >
+                  <Text style={[styles.optionText, cellReception === reception && styles.optionTextActive]}>{reception}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+        
         <TouchableOpacity
           style={[styles.submitBtn, (submitting || locationLoading) && { opacity: 0.6 }]}
           onPress={handleSubmit}
@@ -274,13 +427,130 @@ const styles = StyleSheet.create({
     fontSize: 15,
     minHeight: 48,
     backgroundColor: '#f8fafc',
-    marginBottom: 4,
+    marginBottom: 18,
+  },
+  locationContextInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+    minHeight: 80,
+    backgroundColor: '#f8fafc',
+    marginBottom: 18,
+    textAlignVertical: 'top',
   },
   charCount: {
     fontSize: 12,
     color: '#888',
     alignSelf: 'flex-end',
     marginBottom: 18,
+  },
+  advancedToggleContainer: {
+    marginBottom: 18,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  toggleLabel: {
+    fontSize: 15,
+    color: '#444',
+  },
+  advancedContainer: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  advancedLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+    color: '#444',
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  optionBtn: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  optionBtnActive: {
+    borderColor: '#388e3c',
+    backgroundColor: '#e8f5e9',
+  },
+  optionText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  optionTextActive: {
+    color: '#388e3c',
+    fontWeight: '500',
+  },
+
+  numberInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    backgroundColor: '#fff',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  yesNoContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  yesNoBtn: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+  },
+  yesNoBtnActive: {
+    borderColor: '#388e3c',
+    backgroundColor: '#e8f5e9',
+  },
+  yesNoText: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '500',
+  },
+  yesNoTextActive: {
+    color: '#388e3c',
+  },
+  snowDepthContainer: {
+    marginBottom: 18,
+  },
+  snowDepthInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+    backgroundColor: '#f8fafc',
+    textAlign: 'center',
   },
   submitBtn: {
     backgroundColor: '#E53935',

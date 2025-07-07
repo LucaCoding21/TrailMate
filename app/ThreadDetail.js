@@ -5,6 +5,17 @@ import { useAuth } from '../contexts/AuthContext';
 import { router, useLocalSearchParams } from 'expo-router';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
+
+
+const GEAR_ICONS = {
+  'Winch': 'settings',
+  'Tow straps': 'link',
+  'Shovel': 'content-cut',
+  'Traction boards': 'view-module',
+  'Jack': 'build',
+  'None': 'block'
+};
+
 export default function ThreadDetail() {
   const { user } = useAuth();
   const { rescueId } = useLocalSearchParams();
@@ -127,6 +138,27 @@ export default function ThreadDetail() {
     </View>
   );
 
+  const renderGearItem = (gear) => (
+    <View key={gear} style={styles.gearItem}>
+      <MaterialIcons 
+        name={GEAR_ICONS[gear] || 'build'} 
+        size={16} 
+        color="#388e3c" 
+      />
+      <Text style={styles.gearText}>{gear}</Text>
+    </View>
+  );
+
+  const renderSection = (title, children, icon = null) => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        {icon && <MaterialIcons name={icon} size={18} color="#666" style={{ marginRight: 8 }} />}
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -158,62 +190,139 @@ export default function ThreadDetail() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Rescue Request Details */}
-      <View style={styles.requestContainer}>
-        <View style={styles.requestHeader}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(rescueRequest.status) }]}>
-            <Text style={styles.statusBadgeText}>
-              {rescueRequest.status.charAt(0).toUpperCase() + rescueRequest.status.slice(1)}
-            </Text>
-          </View>
-          <Text style={styles.requestTime}>{formatTime(rescueRequest.createdAt)}</Text>
-        </View>
+      <FlatList
+        ref={flatListRef}
+        data={comments}
+        renderItem={renderComment}
+        keyExtractor={(item) => item.id}
+        style={styles.mainContent}
+        contentContainerStyle={styles.mainContentContainer}
+        ListHeaderComponent={
+          <View>
+            {/* Top Summary Card */}
+            <View style={styles.requestContainer}>
+              <View style={styles.requestHeader}>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(rescueRequest.status) }]}>
+                  <Text style={styles.statusBadgeText}>
+                    {rescueRequest.status.charAt(0).toUpperCase() + rescueRequest.status.slice(1)}
+                  </Text>
+                </View>
+                <Text style={styles.requestTime}>{formatTime(rescueRequest.createdAt)}</Text>
+              </View>
 
-        <Text style={styles.requestTitle}>{rescueRequest.issueType}</Text>
+              <Text style={styles.requestTitle}>{rescueRequest.issueType}</Text>
 
-        {rescueRequest.additionalDetails && (
-          <Text style={styles.requestDetails}>{rescueRequest.additionalDetails}</Text>
-        )}
+              {rescueRequest.snowDepth && (
+                <View style={styles.snowDepthDisplay}>
+                  <MaterialIcons name="ac-unit" size={16} color="#666" />
+                  <Text style={styles.snowDepthText}>{rescueRequest.snowDepth} cm snow</Text>
+                </View>
+              )}
 
-        <View style={styles.locationContainer}>
-          <MaterialIcons name="location-on" size={16} color="#666" />
-          <Text style={styles.locationText}>
-            {rescueRequest.location?.latitude?.toFixed(4)}, {rescueRequest.location?.longitude?.toFixed(4)}
-          </Text>
-        </View>
+              <View style={styles.locationContainer}>
+                <MaterialIcons name="location-on" size={16} color="#666" />
+                <Text style={styles.locationText}>
+                  {rescueRequest.location?.latitude?.toFixed(4)}, {rescueRequest.location?.longitude?.toFixed(4)}
+                </Text>
+              </View>
 
-        {rescueRequest.photoUrl && (
-          <Image source={{ uri: rescueRequest.photoUrl }} style={styles.requestPhoto} />
-        )}
-      </View>
+              {rescueRequest.photoUrl && (
+                <Image source={{ uri: rescueRequest.photoUrl }} style={styles.requestPhoto} />
+              )}
 
-      {/* Comments Section */}
-      <View style={styles.commentsSection}>
-        <Text style={styles.commentsTitle}>
-          {comments.length} comment{comments.length !== 1 ? 's' : ''}
-        </Text>
-        
-        <FlatList
-          ref={flatListRef}
-          data={comments}
-          renderItem={renderComment}
-          keyExtractor={(item) => item.id}
-          style={styles.commentsList}
-          contentContainerStyle={styles.commentsContent}
-          onContentSizeChange={() => {
-            if (comments.length > 0) {
-              flatListRef.current?.scrollToEnd({ animated: true });
-            }
-          }}
-          ListEmptyComponent={
-            <View style={styles.emptyComments}>
-              <MaterialIcons name="chat-bubble-outline" size={32} color="#ccc" />
-              <Text style={styles.emptyCommentsText}>No comments yet</Text>
-              <Text style={styles.emptyCommentsSubtext}>Be the first to respond!</Text>
+              {rescueRequest.additionalDetails && (
+                <Text style={styles.requestDetails}>{rescueRequest.additionalDetails}</Text>
+              )}
             </View>
+
+            {/* How They Got Here Section */}
+            {rescueRequest.locationContext && renderSection(
+              'How They Got Here',
+              <Text style={styles.contextText}>{rescueRequest.locationContext}</Text>,
+              'directions'
+            )}
+
+            {/* Vehicle & Gear Section */}
+            {(rescueRequest.vehicleType || (rescueRequest.recoveryGear && rescueRequest.recoveryGear.length > 0)) && 
+              renderSection(
+                'Vehicle & Gear',
+                <View>
+                  {rescueRequest.vehicleType && (
+                    <View style={styles.infoRow}>
+                      <MaterialIcons name="directions-car" size={16} color="#666" />
+                      <Text style={styles.infoText}>{rescueRequest.vehicleType}</Text>
+                    </View>
+                  )}
+                  {rescueRequest.recoveryGear && rescueRequest.recoveryGear.length > 0 && (
+                    <View style={styles.gearContainer}>
+                      <Text style={styles.gearLabel}>Recovery gear on hand:</Text>
+                      <View style={styles.gearList}>
+                        {rescueRequest.recoveryGear.map(renderGearItem)}
+                      </View>
+                    </View>
+                  )}
+                </View>,
+                'build'
+              )
+            }
+
+            {/* Conditions Section */}
+            {(rescueRequest.canMove !== null || rescueRequest.numPeople || rescueRequest.cellReception) && 
+              renderSection(
+                'Conditions',
+                <View style={styles.conditionsGrid}>
+                  {rescueRequest.canMove !== null && (
+                    <View style={styles.conditionItem}>
+                      <Text style={styles.conditionLabel}>Vehicle can move:</Text>
+                      <View style={[
+                        styles.conditionBadge, 
+                        { 
+                          backgroundColor: rescueRequest.canMove ? '#e8f5e9' : '#ffebee',
+                          borderColor: rescueRequest.canMove ? '#4caf50' : '#f44336'
+                        }
+                      ]}>
+                        <Text style={[
+                          styles.conditionText, 
+                          { color: rescueRequest.canMove ? '#4caf50' : '#f44336' }
+                        ]}>
+                          {rescueRequest.canMove ? 'Yes' : 'No'}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                  
+                  {rescueRequest.numPeople && (
+                    <View style={styles.conditionItem}>
+                      <Text style={styles.conditionLabel}>People:</Text>
+                      <Text style={styles.conditionValue}>{rescueRequest.numPeople}</Text>
+                    </View>
+                  )}
+                  
+                  {rescueRequest.cellReception && (
+                    <View style={styles.conditionItem}>
+                      <Text style={styles.conditionLabel}>Cell reception:</Text>
+                      <Text style={styles.conditionValue}>{rescueRequest.cellReception}</Text>
+                    </View>
+                  )}
+                </View>,
+                'info'
+              )
+            }
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyComments}>
+            <MaterialIcons name="chat-bubble-outline" size={32} color="#ccc" />
+            <Text style={styles.emptyCommentsText}>No comments yet</Text>
+            <Text style={styles.emptyCommentsSubtext}>Be the first to respond!</Text>
+          </View>
+        }
+        onContentSizeChange={() => {
+          if (comments.length > 0) {
+            flatListRef.current?.scrollToEnd({ animated: true });
           }
-        />
-      </View>
+        }}
+      />
 
       {/* Comment Input */}
       <View style={styles.commentInputContainer}>
@@ -295,6 +404,12 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
+  mainContent: {
+    flex: 1,
+  },
+  mainContentContainer: {
+    paddingBottom: 20,
+  },
   requestContainer: {
     backgroundColor: '#fff',
     padding: 20,
@@ -326,11 +441,21 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
   },
+  snowDepthDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  snowDepthText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 6,
+  },
   requestDetails: {
     fontSize: 16,
     color: '#666',
     lineHeight: 24,
-    marginBottom: 12,
+    marginTop: 12,
   },
   locationContainer: {
     flexDirection: 'row',
@@ -347,19 +472,93 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 8,
     backgroundColor: '#f0f0f0',
+    marginBottom: 12,
   },
-  commentsSection: {
-    flex: 1,
+  section: {
     backgroundColor: '#fff',
+    padding: 20,
+    marginBottom: 8,
   },
-  commentsTitle: {
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    padding: 20,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+  },
+  contextText: {
+    fontSize: 15,
+    color: '#666',
+    lineHeight: 22,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 15,
+    color: '#333',
+    marginLeft: 8,
+  },
+  gearContainer: {
+    marginTop: 8,
+  },
+  gearLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  gearList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  gearItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  gearText: {
+    fontSize: 13,
+    color: '#333',
+    marginLeft: 4,
+  },
+
+  conditionsGrid: {
+    gap: 12,
+  },
+  conditionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  conditionLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  conditionBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  conditionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  conditionValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
   },
   commentsList: {
     flex: 1,

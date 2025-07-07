@@ -194,10 +194,55 @@ TrailMate/
 
 ### [2024-06-10] - Reddit-Style Thread View for Active Requests
 
-**Status**: Planned
-**Description**: Redesign the Active Requests screen to look like Reddit threads with thumbnails, titles, and location information.
+**Status**: Completed
+**Description**: Redesigned the Active Requests screen to look like Reddit threads with thumbnails, titles, and location information.
 
-**Requirements**:
+**Implementation**:
+
+- Created ThreadDetail screen for individual rescue request threads
+- Implemented real-time comments system with Firestore
+- Added comment input with user authentication
+- Integrated with ActiveRequests for seamless navigation
+- Added proper loading states and error handling
+
+### [2024-06-10] - Advanced Rescue Form Features
+
+**Status**: Completed
+**Description**: Enhanced the rescue form with advanced metadata fields and improved user experience.
+
+**Implementation**:
+
+- **Advanced Info Toggle**: Added optional advanced fields section with toggle switch
+- **Location Context**: Added field asking how user got to their location (roads, trails, landmarks)
+- **Vehicle & Gear Information**:
+  - Vehicle type selection (Car, SUV, Truck, Motorcycle, ATV/UTV, RV, Other)
+  - Recovery gear multi-select (Winch, Tow straps, Shovel, Traction boards, Jack, None)
+- **Conditions Information**:
+  - Number of people
+  - Vehicle mobility (Can the vehicle still move? Yes/No)
+  - Cell reception quality (Excellent, Good, Fair, Poor, No signal)
+- **Snow Depth Feature**:
+  - Conditional snow depth input (cm) when "Snow/ice" issue is selected
+  - Numeric input with validation (max 999 cm)
+- **Enhanced Thread Detail Display**:
+  - Organized information into logical sections (How They Got Here, Vehicle & Gear, Conditions)
+  - Visual indicators and icons for better scanning
+  - Color-coded badges for vehicle mobility and gear items
+  - Conditional rendering - sections only show when data is available
+  - Snow depth display with snowflake icon when applicable
+
+**Files Modified**:
+
+- `app/RescueForm.js` - Added advanced fields, toggle, and snow depth
+- `app/ThreadDetail.js` - Enhanced display with organized sections and visual indicators
+
+**Design Features**:
+
+- Maintains existing color scheme and design consistency
+- Information-rich but compact layout for quick scanning
+- Visual cues and icons for better understanding
+- Graceful handling of missing data
+- Responsive design that works on different screen sizes
 
 - Reddit-style thread layout with thumbnails
 - Each thread shows: small photo thumbnail, title, location
